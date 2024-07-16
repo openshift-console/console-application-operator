@@ -1,0 +1,41 @@
+on:
+    pull_request:
+      branches: [ main ]
+    push:
+      branches: [ main ]
+        
+  name: build-test-lint
+  
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+          cache: true
+          check-latest: true
+      - name: Set up ko
+        uses: ko-build/setup-ko@v0.6
+        env:
+            KO_DOCKER_REPO: quay.io/avik6028
+      - name: Lint
+        run: make lint
+      - name: Build
+        env:
+            auth_token: ${{ secrets.QUAY_AUTH_TOKEN }}
+        run: |
+            echo "${auth_token}" | ko login quay.io --username ${{ secrets.QUAY_USER_NAME }} --password-stdin
+            make container-build
+      - name: Test
+        run: make test
+      - name: Push
+        env:
+            auth_token: ${{ secrets.QUAY_AUTH_TOKEN }}
+        run: |
+            echo "${auth_token}" | ko login quay.io --username ${{ secrets.QUAY_USER_NAME }} --password-stdin
+            make container-push
+
+
