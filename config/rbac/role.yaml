@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications/status
+  verbs:
+  - get
+  - patch
+  - update

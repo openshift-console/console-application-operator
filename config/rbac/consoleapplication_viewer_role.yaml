@@ -1,0 +1,27 @@
+# permissions for end users to view consoleapplications.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: consoleapplication-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: console-application-operator
+    app.kubernetes.io/part-of: console-application-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: consoleapplication-viewer-role
+rules:
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications/status
+  verbs:
+  - get

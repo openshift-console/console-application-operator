@@ -1,0 +1,31 @@
+# permissions for end users to edit consoleapplications.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: consoleapplication-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: console-application-operator
+    app.kubernetes.io/part-of: console-application-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: consoleapplication-editor-role
+rules:
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.console.dev
+  resources:
+  - consoleapplications/status
+  verbs:
+  - get

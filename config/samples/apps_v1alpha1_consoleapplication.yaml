@@ -1,0 +1,12 @@
+apiVersion: apps.console.dev/v1alpha1
+kind: ConsoleApplication
+metadata:
+  labels:
+    app.kubernetes.io/name: consoleapplication
+    app.kubernetes.io/instance: consoleapplication-sample
+    app.kubernetes.io/part-of: console-application-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: console-application-operator
+  name: consoleapplication-sample
+spec:
+  # TODO(user): Add fields here
