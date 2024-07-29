@@ -1,0 +1,30 @@
+apiVersion: apps.console.dev/v1alpha1
+kind: ConsoleApplication
+metadata:
+  name: github-successes
+  namespace: avik
+  labels:
+    app.openshift.io/name: github-success
+spec:
+  applicationName: github-success-app
+  git:
+    url: https://github.com/openshift-console/console-application-operator
+    contextDir: /
+    reference: main
+  importStrategy: builder-image
+  buildConfiguration:
+    builderImage:
+      name: golang
+      image: docker.io/hello/golang:latest
+    buildOption: BuildConfig
+    env:
+      - name: hello
+        value: world
+  deploymentConfiguration:
+    resourceType: deployment
+    env:
+      - name: hello
+        value: world
+    expose:
+      targetPort: 8080
+      createRoute: true

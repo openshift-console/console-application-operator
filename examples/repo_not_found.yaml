@@ -1,0 +1,30 @@
+apiVersion: apps.console.dev/v1alpha1
+kind: ConsoleApplication
+metadata:
+  name: github-repo-not-found
+  namespace: avik
+  labels:
+    app.openshift.io/name: github-repo-not-found
+spec:
+  applicationName: github-repo-not-found-app
+  git:
+    url: https://github.com/openshift-console/not-found
+    contextDir: /
+    reference: main
+  importStrategy: builder-image
+  buildConfiguration:
+    builderImage:
+      name: golang
+      image: docker.io/hello/golang:latest
+    buildOption: BuildConfig
+    env:
+      - name: hello
+        value: world
+  deploymentConfiguration:
+    resourceType: deployment
+    env:
+      - name: hello
+        value: world
+    expose:
+      targetPort: 8080
+      createRoute: true
