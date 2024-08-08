@@ -69,6 +69,12 @@ func (g *GitService) IsRepoReachable() (metav1.ConditionStatus, GitConditionReas
 }
 
 func identifyGitType(gitURL string) GitProvider {
+	commonRegex := regexp.
+		MustCompile(`^(https?://)?(www\.)?(github\.com|gitlab\.com)(:[0-9]{1,5})?\/([^\/]+)\/([^\/]+)(\.git)?\/?$`)
+	if !commonRegex.MatchString(gitURL) {
+		return Unknown
+	}
+
 	switch {
 	case strings.Contains(gitURL, "github.com"):
 		return Github
@@ -80,18 +86,19 @@ func identifyGitType(gitURL string) GitProvider {
 }
 
 func getOwnerAndRepo(gitURL string) (string, string, error) {
-	// This regular expression matches URLs of the form "https://github.com/username/repo",
-	// "https://gitlab.com/username/repo", or "https://bitbucket.org/username/repo".
-	// It also matches URLs without the "https://" prefix.
-	re := regexp.MustCompile(`(https?://)?(github\.com|gitlab\.com|bitbucket\.org)/([^/]+)/([^/]+)`)
+	// This regular expression matches URLs of the form "https://github.com/username/repo"
+	// or "https://gitlab.com/username/repo", with or without the "https://" prefix,
+	// and optionally with ".git" at the end.
+	re := regexp.
+		MustCompile(`^(https?://)?(www\.)?(github\.com|gitlab\.com)(:[0-9]{1,5})?\/([^\/]+)\/([^\/]+)(\.git)?\/?$`)
 	matches := re.FindStringSubmatch(gitURL)
 
-	if len(matches) < 5 {
+	if len(matches) < 7 {
 		return "", "", errors.New(ReasonInvalidGitURL.String())
 	}
 
-	username, repo := matches[3], matches[4]
-	return username, repo, nil
+	username, repo := matches[5], matches[6]
+	return username, strings.TrimSuffix(repo, ".git"), nil
 }
 
 /** Run this main function to test this package

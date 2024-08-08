@@ -35,3 +35,6 @@ _output/
 
 # Binary for packages
 pkg/**/output
+
+# Environment variables file
+.env

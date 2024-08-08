@@ -50,31 +50,29 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	logger.Info("Reconciling ConsoleApplication...")
 
 	// Retrieving the ConsoleApplication CR instance requested for reconciliation
-	operatorCR := &appsv1alpha1.ConsoleApplication{}
-	if err := r.Get(ctx, req.NamespacedName, operatorCR); err != nil {
+	consoleApplication := &appsv1alpha1.ConsoleApplication{}
+	if err := r.Get(ctx, req.NamespacedName, consoleApplication); err != nil {
 		if errors.IsNotFound(err) {
-			logger.Error(err, "ConsoleApplication Not Found")
 			return NoRequeue()
 		}
 		logger.Error(err, "Unable to fetch ConsoleApplication CR")
-		SetDegraded(operatorCR, appsv1alpha1.ReasonOperatorResourceNotAvailable.String(), err.Error())
-		if err := r.Status().Update(ctx, operatorCR); err != nil {
+		SetDegraded(consoleApplication, appsv1alpha1.ReasonOperatorResourceNotAvailable.String(), err.Error())
+		if err := r.Status().Update(ctx, consoleApplication); err != nil {
 			return RequeueWithError(err)
 		}
 		return RequeueOnError(err)
 	}
 
-	init := operatorCR.Status.Conditions == nil
-	if init {
-		operatorCR.Status.Conditions = make([]metav1.Condition, 0)
-		SetStarted(operatorCR)
-		if err := r.Status().Update(ctx, operatorCR); err != nil {
+	if consoleApplication.Status.Conditions == nil {
+		consoleApplication.Status.Conditions = make([]metav1.Condition, 0)
+		SetStarted(consoleApplication)
+		if err := r.Status().Update(ctx, consoleApplication); err != nil {
 			return RequeueWithError(err)
 		}
 	}
 
 	// Fetching the secret resource if specified in the CR
-	secretResourceName := operatorCR.Spec.Git.SourceSecretRef
+	secretResourceName := consoleApplication.Spec.Git.SourceSecretRef
 	decodedSecret := ""
 	if secretResourceName != "" {
 		secret := &corev1.Secret{}
@@ -83,40 +81,39 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 			Name:      secretResourceName,
 		}, secret); err != nil {
 			logger.Error(err, "Unable To Find Secret Resource")
-			SetFailed(operatorCR, appsv1alpha1.ReasonSecretResourceNotFound.String(), err.Error())
-			if err := r.Status().Update(ctx, operatorCR); err != nil {
+			SetFailed(consoleApplication, appsv1alpha1.ReasonSecretResourceNotFound.String(), err.Error())
+			if err := r.Status().Update(ctx, consoleApplication); err != nil {
 				return RequeueWithError(err)
 			}
 			return NoRequeue()
 		}
 		// Decoding the secret data - Considering the Basic Auth secret
 		decodedSecret = string(secret.Data["password"])
-		logger.Info("Secret Decoded: " + decodedSecret)
 	}
 
 	// Checking if the Git Repository is reachable
-	gs := gitservice.New(operatorCR.Spec.Git.Url, operatorCR.Spec.Git.Reference, decodedSecret, logger)
-	g_status, g_reason := gs.IsRepoReachable()
-	logger.Info("Git Repository Reachable: " + string(g_status))
+	gs := gitservice.New(consoleApplication.Spec.Git.Url, consoleApplication.Spec.Git.Reference, decodedSecret, logger)
+	gStatus, gReason := gs.IsRepoReachable()
+	logger.Info("Git Repository Reachable: " + string(gStatus))
 
-	SetGitServiceCondition(operatorCR, g_status, g_reason.String())
-	if err := r.Status().Update(ctx, operatorCR); err != nil {
+	SetGitServiceCondition(consoleApplication, gStatus, gReason.String())
+	if err := r.Status().Update(ctx, consoleApplication); err != nil {
 		return RequeueWithError(err)
 	}
 
-	if g_status != metav1.ConditionTrue {
-		SetFailed(operatorCR, g_reason.String(), fmt.Sprintf("Git Repository Not Reachable: %s", g_reason.String()))
-		if err := r.Status().Update(ctx, operatorCR); err != nil {
+	if gStatus != metav1.ConditionTrue {
+		SetFailed(consoleApplication, gReason.String(), fmt.Sprintf("Git Repository Not Reachable: %s", gReason.String()))
+		if err := r.Status().Update(ctx, consoleApplication); err != nil {
 			return RequeueWithError(err)
 		}
 		return NoRequeue()
 	}
 
-	// Add the Strategy Service here
+	// Add the Strategy Service here: Return the list of resources config that needs to be created
 
 	logger.Info("All done!")
-	SetSucceeded(operatorCR)
-	if err := r.Status().Update(ctx, operatorCR); err != nil {
+	SetSucceeded(consoleApplication)
+	if err := r.Status().Update(ctx, consoleApplication); err != nil {
 		return RequeueWithError(err)
 	}
 	return NoRequeue()

@@ -13,8 +13,8 @@ const (
 	// ConditionProgressing is True when the operator is progressing
 	ConditionProgressing ConditionType = "Progressing"
 
-	// ConditionApplicationReady is True when the application is ready
-	ConditionApplicationReady ConditionType = "ApplicationReady"
+	// ConditionReady is True when the application is ready
+	ConditionReady ConditionType = "Ready"
 
 	// ConditionGitRepoReachable is True if the Git repository is reachable
 	ConditionGitRepoReachable ConditionType = "GitRepoReachable"
@@ -30,6 +30,9 @@ const (
 
 	// ReasonSecretResourceNotFound indicates the secret resource is not found
 	ReasonSecretResourceNotFound ConditionReason = "SecretResourceNotFound"
+
+	// ReasonInit indicates the resource is initializing
+	ReasonInit ConditionReason = "Init"
 
 	// ReasonAllResourcesReady indicates all resources are ready
 	ReasonAllResourcesReady ConditionReason = "AllResourcesReady"
