@@ -32,3 +32,9 @@ go.work.sum
 
 # Output directory for tests
 _output/
+
+# Binary for packages
+pkg/**/output
+
+# Environment variables file
+.env

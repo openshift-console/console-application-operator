@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	appsv1alpha1 "github.com/openshift-console/console-application-operator/api/v1alpha1"
-	"github.com/openshift-console/console-application-operator/internal/controller"
+	"github.com/openshift-console/console-application-operator/controller"
 	//+kubebuilder:scaffold:imports
 )
 

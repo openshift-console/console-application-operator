@@ -23,19 +23,58 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type Git struct {
+	Url             string `json:"url,omitempty"`
+	ContextDir      string `json:"contextDir,omitempty"`
+	Reference       string `json:"reference,omitempty"`
+	SourceSecretRef string `json:"sourceSecretRef,omitempty"`
+}
+
+type BuildConfiguration struct {
+	BuilderImage BuilderImage `json:"builderImage,omitempty"`
+	BuildOption  string       `json:"buildOption,omitempty"`
+	Env          []Env        `json:"env,omitempty"`
+}
+
+type BuilderImage struct {
+	Name  string `json:"name,omitempty"`
+	Image string `json:"image,omitempty"`
+}
+
+type Env struct {
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+type Expose struct {
+	TargetPort  *int32 `json:"targetPort,omitempty"`
+	CreateRoute bool   `json:"createRoute,omitempty"`
+}
+
+type DeploymentConfiguration struct {
+	ResourceType string `json:"resourceType,omitempty"`
+	Env          []Env  `json:"env,omitempty"`
+	Expose       Expose `json:"expose,omitempty"`
+}
+
 // ConsoleApplicationSpec defines the desired state of ConsoleApplication
 type ConsoleApplicationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ConsoleApplication. Edit consoleapplication_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ApplicationName         string                  `json:"applicationName,omitempty"`
+	Git                     Git                     `json:"git,omitempty"`
+	ImportStrategy          string                  `json:"importStrategy,omitempty"`
+	BuildConfiguration      BuildConfiguration      `json:"buildConfiguration,omitempty"`
+	DeploymentConfiguration DeploymentConfiguration `json:"deploymentConfiguration,omitempty"`
 }
 
 // ConsoleApplicationStatus defines the observed state of ConsoleApplication
 type ConsoleApplicationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
