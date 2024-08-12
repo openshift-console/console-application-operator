@@ -34,9 +34,53 @@ func SetGitServiceCondition(consoleApplication *appsv1alpha1.ConsoleApplication,
 	})
 }
 
-// SetStarted sets the Operator Ready condition to Unknown.
-func SetStarted(consoleApplication *appsv1alpha1.ConsoleApplication) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
+// SetBuildConfigCondition sets the BuildConfig condition with the provided status and reason.
+func SetBuildConfigCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+		Type:               appsv1alpha1.ConditionBuildReady.String(),
+		Status:             status,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Message:            message,
+	})
+}
+
+// SetWorkloadCondition sets the Deployment condition with the provided status and reason.
+func SetWorkloadCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+		Type:               appsv1alpha1.ConditionWorkloadReady.String(),
+		Status:             status,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Message:            message,
+	})
+}
+
+// SetServiceCondition sets the Service condition with the provided status and reason.
+func SetServiceCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+		Type:               appsv1alpha1.ConditionServiceReady.String(),
+		Status:             status,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Message:            message,
+	})
+}
+
+// SetRouteCondition sets the Route condition with the provided status and reason.
+func SetRouteCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+		Type:               appsv1alpha1.ConditionRouteReady.String(),
+		Status:             status,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Message:            message,
+	})
+}
+
+// SetStarted sets the Operator Progressing condition to True.
+func SetStarted(operatorCR *appsv1alpha1.ConsoleApplication) {
+	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionReady.String(),
 		Status:             metav1.ConditionUnknown,
 		Reason:             appsv1alpha1.ReasonInit.String(),

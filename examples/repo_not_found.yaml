@@ -11,17 +11,17 @@ spec:
     url: https://github.com/openshift-console/not-found
     contextDir: /
     reference: main
-  importStrategy: builder-image
+  importStrategy: BuilderImage
   buildConfiguration:
     builderImage:
-      name: golang
-      image: docker.io/hello/golang:latest
+      image: nodejs
+      tag: 16-ubi8
     buildOption: BuildConfig
     env:
       - name: hello
         value: world
   deploymentConfiguration:
-    resourceType: deployment
+    resourceType: Deployment
     env:
       - name: hello
         value: world
