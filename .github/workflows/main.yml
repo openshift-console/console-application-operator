@@ -21,20 +21,15 @@ jobs:
       - name: Set up ko
         uses: ko-build/setup-ko@v0.6
         env:
-          KO_DOCKER_REPO: quay.io/avik6028
+          KO_DOCKER_REPO: quay.io/openshift-console
       - name: Lint
         run: make lint
       - name: Build
-        env:
-          auth_token: ${{ secrets.QUAY_AUTH_TOKEN }}
-        run: |
-          echo "${auth_token}" | ko login quay.io --username ${{ secrets.QUAY_USER_NAME }} --password-stdin
-          make container-build
+        run: make container-build
       - name: Test
         run: make test
       - name: Push
         env:
-          auth_token: ${{ secrets.QUAY_AUTH_TOKEN }}
-        run: |
-          echo "${auth_token}" | ko login quay.io --username ${{ secrets.QUAY_USER_NAME }} --password-stdin
-          make container-push
+          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_AUTH_TOKEN: ${{ secrets.QUAY_AUTH_TOKEN }}
+        run: make container-push

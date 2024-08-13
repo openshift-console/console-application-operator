@@ -24,6 +24,15 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
+# Load the environment variables from the .env file
+# This is useful for local development and testing.
+# You can also set the environment variables directly in the CI/CD pipeline.
+# To use the .env file, you can create a .env file in the root of the project and define the variables.
+ifneq (,$(wildcard ./.env))
+    include .env
+endif
+
+
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
 #
@@ -34,6 +43,7 @@ IMAGE_HOST ?= quay.io
 IMAGE_NAMESPACE ?= openshift-console
 IMAGE_REPO ?= $(IMAGE_HOST)/$(IMAGE_NAMESPACE)
 IMAGE_TAG_BASE ?= $(IMAGE_REPO)/console-application-operator
+
 
 # TAG allows the tag for the operator image to be changed. Defaults to the VERSION
 TAG ?= $(VERSION)
@@ -169,8 +179,14 @@ run: manifests generate fmt vet ## Run a controller from your host.
 container-build: test ko ## Build the container image with the operator.
 	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) build . --push=false ${KO_OPTS}
 
+.PHONY: print-auth
+print-auth: ## Print the environment variables.
+	@echo "Username: ${QUAY_USER_NAME}"
+	@echo "Password: ${QUAY_AUTH_TOKEN}"
+
 .PHONY: container-push
 container-push: ## Push the container image with the operator.
+	echo "${QUAY_AUTH_TOKEN}" | ko login quay.io --username ${QUAY_USER_NAME} --password-stdin
 	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) build . ${KO_OPTS}
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
