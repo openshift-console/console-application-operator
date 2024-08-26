@@ -4,7 +4,7 @@ metadata:
   name: success
   namespace: avik
   labels:
-    app.openshift.io/name: success
+    app.openshift.io/name: successes
 spec:
   applicationName: success-app
   git:
