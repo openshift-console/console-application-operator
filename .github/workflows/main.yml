@@ -28,8 +28,3 @@ jobs:
         run: make container-build
       - name: Test
         run: make test
-      - name: Push
-        env:
-          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
-          QUAY_AUTH_TOKEN: ${{ secrets.QUAY_AUTH_TOKEN }}
-        run: make container-push
