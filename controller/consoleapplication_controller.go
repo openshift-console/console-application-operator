@@ -53,13 +53,10 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	consoleApplication := &appsv1alpha1.ConsoleApplication{}
 	if err := r.Get(ctx, req.NamespacedName, consoleApplication); err != nil {
 		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
 			return NoRequeue()
 		}
-		logger.Error(err, "Unable to fetch ConsoleApplication CR")
-		SetDegraded(consoleApplication, appsv1alpha1.ReasonOperatorResourceNotAvailable.String(), err.Error())
-		if err := r.Status().Update(ctx, consoleApplication); err != nil {
-			return RequeueWithError(err)
-		}
+		// Error reading the object - requeue the request.
 		return RequeueOnError(err)
 	}
 
@@ -67,7 +64,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		consoleApplication.Status.Conditions = make([]metav1.Condition, 0)
 		SetStarted(consoleApplication)
 		if err := r.Status().Update(ctx, consoleApplication); err != nil {
-			return RequeueWithError(err)
+			return RequeueOnError(err)
 		}
 	}
 
@@ -80,10 +77,9 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 			Namespace: req.Namespace,
 			Name:      secretResourceName,
 		}, secret); err != nil {
-			logger.Error(err, "Unable To Find Secret Resource")
 			SetFailed(consoleApplication, appsv1alpha1.ReasonSecretResourceNotFound.String(), err.Error())
 			if err := r.Status().Update(ctx, consoleApplication); err != nil {
-				return RequeueWithError(err)
+				return RequeueOnError(err)
 			}
 			return NoRequeue()
 		}
@@ -98,13 +94,13 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	SetGitServiceCondition(consoleApplication, gStatus, gReason.String())
 	if err := r.Status().Update(ctx, consoleApplication); err != nil {
-		return RequeueWithError(err)
+		return RequeueOnError(err)
 	}
 
 	if gStatus != metav1.ConditionTrue {
 		SetFailed(consoleApplication, gReason.String(), fmt.Sprintf("Git Repository Not Reachable: %s", gReason.String()))
 		if err := r.Status().Update(ctx, consoleApplication); err != nil {
-			return RequeueWithError(err)
+			return RequeueOnError(err)
 		}
 		return NoRequeue()
 	}
@@ -114,7 +110,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	logger.Info("All done!")
 	SetSucceeded(consoleApplication)
 	if err := r.Status().Update(ctx, consoleApplication); err != nil {
-		return RequeueWithError(err)
+		return RequeueOnError(err)
 	}
 	return NoRequeue()
 }
