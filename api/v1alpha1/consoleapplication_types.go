@@ -116,8 +116,8 @@ type Expose struct {
 	CreateRoute bool `json:"createRoute,omitempty"`
 }
 
-// DeploymentConfiguration defines the deployment configuration
-type DeploymentConfiguration struct {
+// ResourceConfiguration defines the deployment configuration
+type ResourceConfiguration struct {
 	// ResourceType is the type of resource to deploy the application
 	// +kubebuilder:validation:Required
 	ResourceType ResourceType `json:"resourceType,omitempty"`
@@ -130,6 +130,11 @@ type DeploymentConfiguration struct {
 	// Expose is the OpenShift Route configuration
 	// +kubebuilder:validation:Required
 	Expose Expose `json:"expose,omitempty"`
+
+	// Replicas is the number of replicas to deploy
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Optional
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // ConsoleApplicationSpec defines the desired state of ConsoleApplication
@@ -149,16 +154,17 @@ type ConsoleApplicationSpec struct {
 
 	// BuildConfiguration is the build configuration
 	// +kubebuilder:validation:Required
-	BuildConfiguration BuildConfiguration `json:"buildConfiguration,omitempty"`
+	BuildConfiguration BuildConfiguration `json:"buildConfig,omitempty"`
 
-	// DeploymentConfiguration is the deployment configuration
+	// ResourceConfiguration is the deployment configuration
 	// +kubebuilder:validation:Required
-	DeploymentConfiguration DeploymentConfiguration `json:"deploymentConfiguration,omitempty"`
+	ResourceConfiguration ResourceConfiguration `json:"resourceConfig,omitempty"`
 }
 
 // ConsoleApplicationStatus defines the observed state of ConsoleApplication
 type ConsoleApplicationStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	Conditions     []metav1.Condition `json:"conditions,omitempty"`
+	ApplicationURL string             `json:"applicationURL,omitempty"`
 }
 
 //+kubebuilder:object:root=true

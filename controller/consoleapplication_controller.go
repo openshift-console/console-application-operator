@@ -22,6 +22,8 @@ import (
 	"sort"
 
 	appsv1alpha1 "github.com/openshift-console/console-application-operator/api/v1alpha1"
+	metrics "github.com/openshift-console/console-application-operator/controller/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,8 +50,13 @@ type ConsoleApplicationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+var (
+	gitSecretKey = "password"
+)
+
 const (
-	DEFAULT_IMAGESTREAM_NAMESPACE = "openshift"
+	defaultImageStreamNamespace = "openshift"
+	imageTriggersAnnotation     = "image.openshift.io/triggers"
 )
 
 // SetupWithManager sets up the controller with the Manager.
@@ -57,10 +64,12 @@ func (r *ConsoleApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error 
 
 	pred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to the status in the reconciliation loop
 			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool { return !e.DeleteStateUnknown },
 		CreateFunc: func(e event.CreateEvent) bool {
+			// Ignore create events for non-ConsoleApplication objects
 			_, ok := e.Object.(*appsv1alpha1.ConsoleApplication)
 			return ok
 		},
@@ -95,6 +104,7 @@ func (r *ConsoleApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	metrics.ReconcilesTotal.WithLabelValues(req.Namespace, req.Name).Inc()
 	logger := log.FromContext(ctx).WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	logger.Info("Reconciling ConsoleApplication...")
 
@@ -117,6 +127,16 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	// Listing the number of ConsoleApplications in the cluster
+	consoleApplications := &appsv1alpha1.ConsoleApplicationList{}
+	if err := r.List(ctx, consoleApplications); err != nil {
+		logger.Error(err, "Unable to list ConsoleApplications")
+		return RequeueWithError(err)
+	}
+	metrics.ConsoleApplicationsProcessing.With(prometheus.Labels{
+		"namespace": req.Namespace,
+	}).Set(float64(len(consoleApplications.Items)))
+
 	// Fetching the secret resource if specified in the CR
 	secretResourceName := consoleApplication.Spec.Git.SourceSecretRef
 	decodedSecret := ""
@@ -133,7 +153,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return NoRequeue()
 		}
 		// Decoding the secret data - Considering the Basic Auth secret
-		decodedSecret = string(secret.Data["password"])
+		decodedSecret = string(secret.Data[gitSecretKey])
 	}
 
 	if meta.FindStatusCondition(consoleApplication.Status.Conditions,
@@ -141,8 +161,10 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		logger.Info("Git Repository Reachable Condition Already Exists")
 	} else {
 		// Checking if the Git Repository is reachable
+		timer := prometheus.NewTimer(metrics.GitRepoReachableDuration.WithLabelValues(req.Namespace, req.Name))
 		gs := gitservice.New(consoleApplication.Spec.Git.Url, consoleApplication.Spec.Git.Reference, decodedSecret, logger)
 		gStatus, gReason := gs.IsRepoReachable()
+		timer.ObserveDuration()
 		logger.Info("Git Repository Reachable: " + string(gStatus))
 
 		SetGitServiceCondition(consoleApplication, gStatus, gReason.String())
@@ -180,6 +202,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 				}
 				return NoRequeue()
 			}
+			metrics.ResourcesCreatedTotal.WithLabelValues(req.Namespace, consoleApplication.ObjectMeta.Name, "ImageStream").Inc()
 			logger.Info("ImageStream Created")
 		} else {
 			logger.Error(err, "Unable To Fetch ImageStream")
@@ -203,7 +226,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Check if the ImageStream exists
 		imgStream := &imagev1.ImageStream{}
 		if err := r.Get(ctx, client.ObjectKey{
-			Namespace: DEFAULT_IMAGESTREAM_NAMESPACE,
+			Namespace: defaultImageStreamNamespace,
 			Name:      consoleApplication.Spec.BuildConfiguration.BuilderImage.Image,
 		}, imgStream); err != nil {
 			logger.Error(err, "Unable To Find ImageStream Resource")
@@ -248,6 +271,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 						}
 						return NoRequeue()
 					}
+					metrics.ResourcesCreatedTotal.WithLabelValues(req.Namespace, consoleApplication.ObjectMeta.Name, "BuildConfig").Inc()
 					logger.Info("BuildConfig Created")
 					SetBuildConfigCondition(consoleApplication, metav1.ConditionUnknown, appsv1alpha1.ReasonBuildConfigCreated.String(), "BuildConfig Created")
 					if err := r.Status().Update(ctx, consoleApplication); err != nil {
@@ -338,6 +362,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 				}
 				return NoRequeue()
 			}
+			metrics.ResourcesCreatedTotal.WithLabelValues(req.Namespace, consoleApplication.ObjectMeta.Name, "Deployment").Inc()
 			logger.Info("Workload Created")
 			return RequeueAfterSeconds(3)
 		} else {
@@ -414,6 +439,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 				}
 				return NoRequeue()
 			}
+			metrics.ResourcesCreatedTotal.WithLabelValues(req.Namespace, consoleApplication.ObjectMeta.Name, "Service").Inc()
 			logger.Info("Service Created")
 		} else {
 			logger.Error(err, "Unable To Fetch Service")
@@ -438,7 +464,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// Create Route if mentioned in the CR
-	if consoleApplication.Spec.DeploymentConfiguration.Expose.CreateRoute {
+	if consoleApplication.Spec.ResourceConfiguration.Expose.CreateRoute {
 		route := &routev1.Route{}
 		// Check if the Route exists
 		if err := r.Get(ctx, client.ObjectKey{
@@ -459,6 +485,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 					}
 					return NoRequeue()
 				}
+				metrics.ResourcesCreatedTotal.WithLabelValues(req.Namespace, consoleApplication.ObjectMeta.Name, "Route").Inc()
 				logger.Info("Route Created")
 			} else {
 				logger.Error(err, "Unable To Fetch Route")
@@ -477,6 +504,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		} else {
 			logger.Info("Route Ready")
 			SetRouteCondition(consoleApplication, metav1.ConditionTrue, appsv1alpha1.ReasonRouteReady.String(), "Route Ready")
+			SetRouteURL(consoleApplication, route)
 			if err := r.Status().Update(ctx, consoleApplication); err != nil {
 				return RequeueWithError(err)
 			}
@@ -487,6 +515,7 @@ func (r *ConsoleApplicationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.Status().Update(ctx, consoleApplication); err != nil {
 		return RequeueOnError(err)
 	}
+	metrics.ConsoleApplicationsSuccessTotal.With(prometheus.Labels{"namespace": req.Namespace}).Inc()
 	logger.Info("All done!")
 	return NoRequeue()
 }
@@ -547,7 +576,7 @@ func newBuildConfig(consoleApplication *appsv1alpha1.ConsoleApplication) *buildv
 						From: corev1.ObjectReference{
 							Kind:      "ImageStreamTag",
 							Name:      consoleApplication.Spec.BuildConfiguration.BuilderImage.Image + ":" + consoleApplication.Spec.BuildConfiguration.BuilderImage.Tag,
-							Namespace: DEFAULT_IMAGESTREAM_NAMESPACE,
+							Namespace: defaultImageStreamNamespace,
 						},
 						Env: consoleApplication.Spec.BuildConfiguration.Env,
 					},
@@ -576,10 +605,14 @@ func newBuildConfig(consoleApplication *appsv1alpha1.ConsoleApplication) *buildv
 
 func newK8sDeployment(consoleApplication *appsv1alpha1.ConsoleApplication) *appsv1.Deployment {
 	deploymentLabels := mergeLabels(defaultLabels(consoleApplication), consoleApplication.ObjectMeta.Labels)
+
 	deploymentAnnotations := mergeAnnotations(
 		defaultAnnotations(consoleApplication),
 		consoleApplication.ObjectMeta.Annotations,
-		map[string]string{AnnotationResolveNames: "*"},
+		map[string]string{
+			AnnotationResolveNames:  "*",
+			imageTriggersAnnotation: fmt.Sprintf(`[{"from":{"kind":"ImageStreamTag","name":"%v:latest","namespace":"%v"},"fieldPath":"spec.template.spec.containers[?(@.name==\"%v\")].image","pause":"false"}]`, consoleApplication.ObjectMeta.Name, consoleApplication.Namespace, consoleApplication.ObjectMeta.Name),
+		},
 	)
 
 	return &appsv1.Deployment{
@@ -590,10 +623,7 @@ func newK8sDeployment(consoleApplication *appsv1alpha1.ConsoleApplication) *apps
 			Annotations: deploymentAnnotations,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: func() *int32 {
-				replicas := int32(1)
-				return &replicas
-			}(),
+			Replicas: consoleApplication.Spec.ResourceConfiguration.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": consoleApplication.ObjectMeta.Name,
@@ -613,10 +643,10 @@ func newK8sDeployment(consoleApplication *appsv1alpha1.ConsoleApplication) *apps
 							Name: consoleApplication.ObjectMeta.Name,
 							Image: "image-registry.openshift-image-registry.svc:5000/" +
 								consoleApplication.ObjectMeta.Namespace + "/" + consoleApplication.ObjectMeta.Name + ":latest",
-							Env: consoleApplication.Spec.DeploymentConfiguration.Env,
+							Env: consoleApplication.Spec.ResourceConfiguration.Env,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: *consoleApplication.Spec.DeploymentConfiguration.Expose.TargetPort,
+									ContainerPort: *consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort,
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
@@ -645,9 +675,9 @@ func newService(consoleApplication *appsv1alpha1.ConsoleApplication) *corev1.Ser
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Name:       fmt.Sprintf("%d-tcp", *consoleApplication.Spec.DeploymentConfiguration.Expose.TargetPort),
-					Port:       *consoleApplication.Spec.DeploymentConfiguration.Expose.TargetPort,
-					TargetPort: intstr.FromInt(int(*consoleApplication.Spec.DeploymentConfiguration.Expose.TargetPort)),
+					Name:       fmt.Sprintf("%d-tcp", *consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort),
+					Port:       *consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort,
+					TargetPort: intstr.FromInt(int(*consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -676,7 +706,7 @@ func newRoute(consoleApplication *appsv1alpha1.ConsoleApplication) *routev1.Rout
 				Name: consoleApplication.ObjectMeta.Name,
 			},
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString(fmt.Sprintf("%d-tcp", *consoleApplication.Spec.DeploymentConfiguration.Expose.TargetPort)),
+				TargetPort: intstr.FromString(fmt.Sprintf("%d-tcp", *consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort)),
 			},
 			WildcardPolicy: routev1.WildcardPolicyNone,
 			TLS: &routev1.TLSConfig{Termination: routev1.TLSTerminationEdge,

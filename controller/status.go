@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appsv1alpha1 "github.com/openshift-console/console-application-operator/api/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 // TODO: Implement "Progressing" status condition in the future.
@@ -35,8 +36,8 @@ func SetGitServiceCondition(consoleApplication *appsv1alpha1.ConsoleApplication,
 }
 
 // SetBuildConfigCondition sets the BuildConfig condition with the provided status and reason.
-func SetBuildConfigCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+func SetBuildConfigCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionBuildReady.String(),
 		Status:             status,
 		Reason:             reason,
@@ -46,8 +47,8 @@ func SetBuildConfigCondition(operatorCR *appsv1alpha1.ConsoleApplication, status
 }
 
 // SetWorkloadCondition sets the Deployment condition with the provided status and reason.
-func SetWorkloadCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+func SetWorkloadCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionWorkloadReady.String(),
 		Status:             status,
 		Reason:             reason,
@@ -57,8 +58,8 @@ func SetWorkloadCondition(operatorCR *appsv1alpha1.ConsoleApplication, status me
 }
 
 // SetServiceCondition sets the Service condition with the provided status and reason.
-func SetServiceCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+func SetServiceCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionServiceReady.String(),
 		Status:             status,
 		Reason:             reason,
@@ -68,8 +69,8 @@ func SetServiceCondition(operatorCR *appsv1alpha1.ConsoleApplication, status met
 }
 
 // SetRouteCondition sets the Route condition with the provided status and reason.
-func SetRouteCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+func SetRouteCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionRouteReady.String(),
 		Status:             status,
 		Reason:             reason,
@@ -78,9 +79,18 @@ func SetRouteCondition(operatorCR *appsv1alpha1.ConsoleApplication, status metav
 	})
 }
 
+// SetRouteURL sets the Application URL in the status.
+func SetRouteURL(consoleApplication *appsv1alpha1.ConsoleApplication, route *routev1.Route) {
+	scheme := "http"
+	if route.Spec.TLS != nil {
+		scheme = "https"
+	}
+	consoleApplication.Status.ApplicationURL = fmt.Sprintf("%s://%s", scheme, route.Spec.Host)
+}
+
 // SetStarted sets the Operator Progressing condition to True.
-func SetStarted(operatorCR *appsv1alpha1.ConsoleApplication) {
-	meta.SetStatusCondition(&operatorCR.Status.Conditions, metav1.Condition{
+func SetStarted(consoleApplication *appsv1alpha1.ConsoleApplication) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionReady.String(),
 		Status:             metav1.ConditionUnknown,
 		Reason:             appsv1alpha1.ReasonInit.String(),

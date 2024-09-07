@@ -186,7 +186,7 @@ print-auth: ## Print the environment variables.
 
 .PHONY: container-push
 container-push: ## Push the container image with the operator.
-	echo "${QUAY_AUTH_TOKEN}" | ko login quay.io --username ${QUAY_USER_NAME} --password-stdin
+	echo "${QUAY_AUTH_TOKEN}" | $(KO) login quay.io --username ${QUAY_USER_NAME} --password-stdin
 	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) build . ${KO_OPTS}
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.

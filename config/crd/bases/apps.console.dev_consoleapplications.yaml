@@ -45,7 +45,7 @@ spec:
                 description: ApplicationName is the name of the application. This
                   is used to group the resources created for the application.
                 type: string
-              buildConfiguration:
+              buildConfig:
                 description: BuildConfiguration is the build configuration
                 properties:
                   buildOption:
@@ -195,8 +195,35 @@ spec:
                       type: object
                     type: array
                 type: object
-              deploymentConfiguration:
-                description: DeploymentConfiguration is the deployment configuration
+              git:
+                description: Git is the git repository details
+                properties:
+                  contextDir:
+                    default: /
+                    description: ContextDir is the directory within the git repository
+                      to use as the context for the build
+                    type: string
+                  reference:
+                    default: main
+                    description: Reference is the branch, tag, or commit
+                    type: string
+                  sourceSecretRef:
+                    description: SourceSecretRef is the reference to the secret containing
+                      the git credentials
+                    type: string
+                  url:
+                    description: URL is the git repository URL
+                    type: string
+                type: object
+              importStrategy:
+                description: ImportStrategy is the import strategy to use for importing
+                  the application
+                enum:
+                - BuilderImage
+                - Dockerfile
+                type: string
+              resourceConfig:
+                description: ResourceConfiguration is the deployment configuration
                 properties:
                   env:
                     default: []
@@ -339,6 +366,11 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  replicas:
+                    default: 1
+                    description: Replicas is the number of replicas to deploy
+                    format: int32
+                    type: integer
                   resourceType:
                     description: ResourceType is the type of resource to deploy the
                       application
@@ -346,37 +378,12 @@ spec:
                     - Deployment
                     type: string
                 type: object
-              git:
-                description: Git is the git repository details
-                properties:
-                  contextDir:
-                    default: /
-                    description: ContextDir is the directory within the git repository
-                      to use as the context for the build
-                    type: string
-                  reference:
-                    default: main
-                    description: Reference is the branch, tag, or commit
-                    type: string
-                  sourceSecretRef:
-                    description: SourceSecretRef is the reference to the secret containing
-                      the git credentials
-                    type: string
-                  url:
-                    description: URL is the git repository URL
-                    type: string
-                type: object
-              importStrategy:
-                description: ImportStrategy is the import strategy to use for importing
-                  the application
-                enum:
-                - BuilderImage
-                - Dockerfile
-                type: string
             type: object
           status:
             description: ConsoleApplicationStatus defines the observed state of ConsoleApplication
             properties:
+              applicationURL:
+                type: string
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current

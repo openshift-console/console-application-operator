@@ -12,7 +12,7 @@ spec:
     contextDir: /
     reference: main
   importStrategy: BuilderImage
-  buildConfiguration:
+  buildConfig:
     builderImage:
       image: nodejs
       tag: 16-ubi8
@@ -20,8 +20,9 @@ spec:
     env:
       - name: hello
         value: world
-  deploymentConfiguration:
+  resourceConfig:
     resourceType: Deployment
+    replicas: 3
     env:
       - name: hello
         value: world
