@@ -65,7 +65,8 @@ func (r *ResourceMapper) GetRequiredResources() (resources []RequiredResource) {
 			Namespace: defaultImageStreamNamespace,
 			Type:      &imagev1.ImageStream{},
 			CheckStatus: func(res client.Object) (bool, error) {
-				return r.checkBuilderImageTagExists(res.(*imagev1.ImageStream), r.consoleApplication.Spec.BuildConfiguration.BuilderImage.Tag)
+				return r.checkBuilderImageTagExists(res.(*imagev1.ImageStream),
+					r.consoleApplication.Spec.BuildConfiguration.BuilderImage.Tag)
 			},
 		})
 	}
@@ -75,8 +76,10 @@ func (r *ResourceMapper) GetRequiredResources() (resources []RequiredResource) {
 func (r *ResourceMapper) MapResources() ([]ConsoleAppResource, error) {
 
 	isBuilderImageImportStrategy := r.consoleApplication.Spec.ImportStrategy == appsv1alpha1.ImportStrategyBuilderImage
-	isBuildOptionBuildConfig := r.consoleApplication.Spec.BuildConfiguration.BuildOption == appsv1alpha1.BuildOptionBuildConfig
-	isDeploymentResourceType := r.consoleApplication.Spec.ResourceConfiguration.ResourceType == appsv1alpha1.ResourceTypeDeployment
+	isBuildOptionBuildConfig := r.consoleApplication.Spec.BuildConfiguration.BuildOption ==
+		appsv1alpha1.BuildOptionBuildConfig
+	isDeploymentResourceType := r.consoleApplication.Spec.ResourceConfiguration.ResourceType ==
+		appsv1alpha1.ResourceTypeDeployment
 	isRouteCreationEnabled := r.consoleApplication.Spec.ResourceConfiguration.Expose.CreateRoute
 
 	// Perform sanity checks
@@ -160,7 +163,8 @@ func (r *ResourceMapper) checkBuilderImageTagExists(imgStream *imagev1.ImageStre
 	return false, fmt.Errorf("ImageStreamTag %s:%s not found", imgStream.Name, tag)
 }
 
-func (r *ResourceMapper) CheckBuildStatus(builds *buildv1.BuildList) (requeueNeeded bool, status metav1.ConditionStatus, reason ConditionReason, message string) {
+func (r *ResourceMapper) CheckBuildStatus(builds *buildv1.BuildList) (requeueNeeded bool,
+	status metav1.ConditionStatus, reason ConditionReason, message string) {
 	if len(builds.Items) == 0 {
 		return true, metav1.ConditionUnknown, ReasonBuildsNotFound, "Builds not created yet"
 	}
@@ -174,15 +178,19 @@ func (r *ResourceMapper) CheckBuildStatus(builds *buildv1.BuildList) (requeueNee
 	latestBuild := builds.Items[0]
 	switch latestBuild.Status.Phase {
 	case buildv1.BuildPhaseNew, buildv1.BuildPhasePending, buildv1.BuildPhaseRunning:
-		return true, metav1.ConditionUnknown, ConditionReason(latestBuild.Status.Phase), fmt.Sprintf("%s in progress", latestBuild.Name)
+		return true, metav1.ConditionUnknown, ConditionReason(latestBuild.Status.Phase),
+			fmt.Sprintf("%s in progress", latestBuild.Name)
 	case buildv1.BuildPhaseComplete:
-		return false, metav1.ConditionTrue, ConditionReason(latestBuild.Status.Phase), fmt.Sprintf("%s has completed", latestBuild.Name)
+		return false, metav1.ConditionTrue, ConditionReason(latestBuild.Status.Phase),
+			fmt.Sprintf("%s has completed", latestBuild.Name)
 	default:
-		return false, metav1.ConditionFalse, ReasonBuildsFailed, fmt.Sprintf("Build Phase: %s", latestBuild.Status.Phase)
+		return false, metav1.ConditionFalse, ReasonBuildsFailed,
+			fmt.Sprintf("Build Phase: %s", latestBuild.Status.Phase)
 	}
 }
 
-func (r *ResourceMapper) CheckDeploymentStatus(deployment *appsv1.Deployment) (requeueNeeded bool, status metav1.ConditionStatus, reason ConditionReason, message string) {
+func (r *ResourceMapper) CheckDeploymentStatus(deployment *appsv1.Deployment) (requeueNeeded bool,
+	status metav1.ConditionStatus, reason ConditionReason, message string) {
 	if deployment.Status.Conditions == nil {
 		return true, metav1.ConditionUnknown, ReasonWorkloadNotReady, "Deployment not created yet"
 	}

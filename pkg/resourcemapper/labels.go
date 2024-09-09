@@ -22,7 +22,8 @@ const (
 	AnnotationGeneratedBy = "openshift.io/generated-by"
 	// URI for the source code under version control
 	AnnotationVCSURI = "app.openshift.io/vcs-uri"
-	// Identifier for the version of the source code. Can be branch, tag or commit SHA for the application. If omitted master head of the default branch is assumed.
+	// Identifier for the version of the source code. Can be branch, tag or commit SHA for the application.
+	//If omitted master head of the default branch is assumed.
 	AnnotationVCSRef = "app.openshift.io/vcs-ref"
 
 	// Annotation to resolve the names of the images in the application

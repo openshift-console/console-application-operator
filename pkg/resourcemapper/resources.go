@@ -33,7 +33,8 @@ func newImageStream(consoleApplication *appsv1alpha1.ConsoleApplication) *imagev
 func newBuildConfig(consoleApplication *appsv1alpha1.ConsoleApplication) *buildv1.BuildConfig {
 
 	buildConfigLabels := mergeLabels(defaultLabels(consoleApplication), consoleApplication.ObjectMeta.Labels)
-	buildConfigAnnotations := mergeAnnotations(defaultAnnotations(consoleApplication), consoleApplication.ObjectMeta.Annotations)
+	buildConfigAnnotations := mergeAnnotations(defaultAnnotations(consoleApplication),
+		consoleApplication.ObjectMeta.Annotations)
 
 	return &buildv1.BuildConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -64,8 +65,9 @@ func newBuildConfig(consoleApplication *appsv1alpha1.ConsoleApplication) *buildv
 					Type: buildv1.SourceBuildStrategyType,
 					SourceStrategy: &buildv1.SourceBuildStrategy{
 						From: corev1.ObjectReference{
-							Kind:      "ImageStreamTag",
-							Name:      consoleApplication.Spec.BuildConfiguration.BuilderImage.Image + ":" + consoleApplication.Spec.BuildConfiguration.BuilderImage.Tag,
+							Kind: "ImageStreamTag",
+							Name: consoleApplication.Spec.BuildConfiguration.BuilderImage.Image +
+								":" + consoleApplication.Spec.BuildConfiguration.BuilderImage.Tag,
 							Namespace: defaultImageStreamNamespace,
 						},
 						Env: consoleApplication.Spec.BuildConfiguration.Env,
@@ -100,8 +102,10 @@ func newK8sDeployment(consoleApplication *appsv1alpha1.ConsoleApplication) *apps
 		defaultAnnotations(consoleApplication),
 		consoleApplication.ObjectMeta.Annotations,
 		map[string]string{
-			AnnotationResolveNames:  "*",
-			imageTriggersAnnotation: fmt.Sprintf(`[{"from":{"kind":"ImageStreamTag","name":"%v:latest","namespace":"%v"},"fieldPath":"spec.template.spec.containers[?(@.name==\"%v\")].image","pause":"false"}]`, consoleApplication.ObjectMeta.Name, consoleApplication.Namespace, consoleApplication.ObjectMeta.Name),
+			AnnotationResolveNames: "*",
+			imageTriggersAnnotation: fmt.Sprintf(`[{"from":{"kind":"ImageStreamTag","name":"%v:latest",	"namespace":"%v"},
+			"fieldPath":"spec.template.spec.containers[?(@.name==\"%v\")].image","pause":"false"}]`,
+				consoleApplication.ObjectMeta.Name, consoleApplication.Namespace, consoleApplication.ObjectMeta.Name),
 		},
 	)
 
@@ -150,7 +154,8 @@ func newK8sDeployment(consoleApplication *appsv1alpha1.ConsoleApplication) *apps
 
 func newService(consoleApplication *appsv1alpha1.ConsoleApplication) *corev1.Service {
 	serviceLabels := mergeLabels(defaultLabels(consoleApplication), consoleApplication.ObjectMeta.Labels)
-	serviceAnnotations := mergeAnnotations(defaultAnnotations(consoleApplication), consoleApplication.ObjectMeta.Annotations)
+	serviceAnnotations := mergeAnnotations(defaultAnnotations(consoleApplication),
+		consoleApplication.ObjectMeta.Annotations)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -196,7 +201,8 @@ func newRoute(consoleApplication *appsv1alpha1.ConsoleApplication) *routev1.Rout
 				Name: consoleApplication.ObjectMeta.Name,
 			},
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString(fmt.Sprintf("%d-tcp", *consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort)),
+				TargetPort: intstr.FromString(fmt.Sprintf("%d-tcp",
+					*consoleApplication.Spec.ResourceConfiguration.Expose.TargetPort)),
 			},
 			WildcardPolicy: routev1.WildcardPolicyNone,
 			TLS: &routev1.TLSConfig{Termination: routev1.TLSTerminationEdge,

@@ -122,8 +122,12 @@ func (r *ConsoleApplicationReconciler) handlePostCreationChecks(ctx context.Cont
 			if obj.(*routev1.Route).Spec.TLS != nil {
 				scheme = "https"
 			}
-			SetStatusField(consoleApplication, appsv1alpha1.StatusFieldApplicationURL,
+			err := SetStatusField(consoleApplication, appsv1alpha1.StatusFieldApplicationURL,
 				fmt.Sprintf("%s://%s", scheme, obj.(*routev1.Route).Spec.Host))
+			if err != nil {
+				logger.Error(err, "Unable to set Application URL")
+				return ReconcileResult{Error: err}
+			}
 			if err := r.Status().Update(ctx, consoleApplication); err != nil {
 				return ReconcileResult{Error: err}
 			}
