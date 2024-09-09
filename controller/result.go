@@ -16,11 +16,6 @@ func RequeueOnError(err error) (ctrl.Result, error) {
 	return ctrl.Result{}, err
 }
 
-// RequeueWithError triggers a object requeue because the informed error happened.
-func RequeueWithError(err error) (ctrl.Result, error) {
-	return ctrl.Result{Requeue: true}, err
-}
-
 // RequeueAfterSeconds triggers a object requeue after the informed seconds.
 func RequeueAfterSeconds(seconds int) (ctrl.Result, error) {
 	return ctrl.Result{

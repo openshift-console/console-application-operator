@@ -46,4 +46,7 @@ var (
 func init() {
 	metrics.Registry.MustRegister(ReconcilesTotal)
 	metrics.Registry.MustRegister(GitRepoReachableDuration)
+	metrics.Registry.MustRegister(ConsoleApplicationsProcessing)
+	metrics.Registry.MustRegister(ConsoleApplicationsSuccessTotal)
+	metrics.Registry.MustRegister(ResourcesCreatedTotal)
 }

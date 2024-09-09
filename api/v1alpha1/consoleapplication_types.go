@@ -24,6 +24,10 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+const (
+	StatusFieldApplicationURL string = "ApplicationURL"
+)
+
 // ImportStrategyType defines the type of import strategy
 // +kubebuilder:validation:Enum=BuilderImage;Dockerfile
 type ImportStrategyType string

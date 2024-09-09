@@ -10,6 +10,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type GitServiceInterface interface {
+	IsRepoReachable(gs *GitService) (metav1.ConditionStatus, GitConditionReason)
+}
+
 type GitService struct {
 	GitURL      string
 	reference   string
@@ -41,7 +45,6 @@ func New(gitURL, branch, secretValue string, logger logr.Logger) *GitService {
 			reason: ReasonInvalidGitURL,
 		}
 	}
-
 	return &GitService{
 		GitURL:      gitURL,
 		reference:   branch,
@@ -53,19 +56,21 @@ func New(gitURL, branch, secretValue string, logger logr.Logger) *GitService {
 		status:      status,
 		reason:      reason,
 	}
+
 }
 
-func (g *GitService) IsRepoReachable() (metav1.ConditionStatus, GitConditionReason) {
-	if g.status != metav1.ConditionUnknown {
-		return g.status, g.reason
+func (g *GitService) IsRepoReachable(gs *GitService) (metav1.ConditionStatus, GitConditionReason) {
+	// prevent rechecking if the status is already known
+	if gs.status != metav1.ConditionUnknown {
+		return gs.status, gs.reason
 	}
-	switch g.gitType {
+	switch gs.gitType {
 	case Github:
-		isGHRepoReachable(g)
+		isGHRepoReachable(gs)
 	case Gitlab:
-		isGLRepoReachable(g)
+		isGLRepoReachable(gs)
 	}
-	return g.status, g.reason
+	return gs.status, gs.reason
 }
 
 func identifyGitType(gitURL string) GitProvider {

@@ -1,4 +1,4 @@
-package controller
+package resourcemapper
 
 import appsv1alpha1 "github.com/openshift-console/console-application-operator/api/v1alpha1"
 

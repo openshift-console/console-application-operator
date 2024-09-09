@@ -2,13 +2,13 @@ package controller
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appsv1alpha1 "github.com/openshift-console/console-application-operator/api/v1alpha1"
-	routev1 "github.com/openshift/api/route/v1"
 )
 
 // TODO: Implement "Progressing" status condition in the future.
@@ -35,10 +35,10 @@ func SetGitServiceCondition(consoleApplication *appsv1alpha1.ConsoleApplication,
 	})
 }
 
-// SetBuildConfigCondition sets the BuildConfig condition with the provided status and reason.
-func SetBuildConfigCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+// SetResourceCondition sets a condition for a specific resource type.
+func SetResourceCondition(consoleApplication *appsv1alpha1.ConsoleApplication, conditionType string, status metav1.ConditionStatus, reason, message string) {
 	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionBuildReady.String(),
+		Type:               conditionType,
 		Status:             status,
 		Reason:             reason,
 		LastTransitionTime: metav1.NewTime(time.Now()),
@@ -46,87 +46,66 @@ func SetBuildConfigCondition(consoleApplication *appsv1alpha1.ConsoleApplication
 	})
 }
 
-// SetWorkloadCondition sets the Deployment condition with the provided status and reason.
-func SetWorkloadCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionWorkloadReady.String(),
-		Status:             status,
-		Reason:             reason,
-		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            message,
-	})
-}
+// SetStatusField sets a status field with the provided value.
+func SetStatusField(consoleApplication *appsv1alpha1.ConsoleApplication, fieldName string, value interface{}) error {
+	statusValue := reflect.ValueOf(&consoleApplication.Status).Elem()
+	fieldValue := statusValue.FieldByName(fieldName)
 
-// SetServiceCondition sets the Service condition with the provided status and reason.
-func SetServiceCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionServiceReady.String(),
-		Status:             status,
-		Reason:             reason,
-		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            message,
-	})
-}
-
-// SetRouteCondition sets the Route condition with the provided status and reason.
-func SetRouteCondition(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionRouteReady.String(),
-		Status:             status,
-		Reason:             reason,
-		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            message,
-	})
-}
-
-// SetRouteURL sets the Application URL in the status.
-func SetRouteURL(consoleApplication *appsv1alpha1.ConsoleApplication, route *routev1.Route) {
-	scheme := "http"
-	if route.Spec.TLS != nil {
-		scheme = "https"
+	if !fieldValue.IsValid() {
+		return fmt.Errorf("no such field: %s in status", fieldName)
 	}
-	consoleApplication.Status.ApplicationURL = fmt.Sprintf("%s://%s", scheme, route.Spec.Host)
+	if !fieldValue.CanSet() {
+		return fmt.Errorf("cannot set field: %s in status", fieldName)
+	}
+
+	val := reflect.ValueOf(value)
+	if fieldValue.Type() != val.Type() {
+		return fmt.Errorf("provided value type didn't match status field type")
+	}
+
+	fieldValue.Set(val)
+	return nil
 }
 
-// SetStarted sets the Operator Progressing condition to True.
-func SetStarted(consoleApplication *appsv1alpha1.ConsoleApplication) {
+// SetReady sets the Operator Ready condition.
+func SetReady(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
 	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
 		Type:               appsv1alpha1.ConditionReady.String(),
-		Status:             metav1.ConditionUnknown,
-		Reason:             appsv1alpha1.ReasonInit.String(),
+		Status:             status,
+		Reason:             reason,
 		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            "Initializing ConsoleApplication",
+		Message:            message,
 	})
+}
+
+// SetProgressing sets the Operator Progressing condition.
+func SetProgressing(consoleApplication *appsv1alpha1.ConsoleApplication, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
+		Type:               appsv1alpha1.ConditionProgressing.String(),
+		Status:             status,
+		Reason:             reason,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Message:            message,
+	})
+}
+
+// SetStarted sets the Operator Progressing condition to True and Ready condition to Unknown.
+func SetStarted(consoleApplication *appsv1alpha1.ConsoleApplication) {
+	if consoleApplication.Status.Conditions == nil {
+		consoleApplication.Status.Conditions = make([]metav1.Condition, 0)
+		SetReady(consoleApplication, metav1.ConditionUnknown, appsv1alpha1.ReasonInit.String(), "Initializing ConsoleApplication")
+	}
+	SetProgressing(consoleApplication, metav1.ConditionTrue, appsv1alpha1.ReasonRequirementsBeingMet.String(), "Requirements are being met")
 }
 
 // SetFailed sets the Operator Progressing and Application Ready conditions to False with the provided reason and message.
 func SetFailed(consoleApplication *appsv1alpha1.ConsoleApplication, reason, message string) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionReady.String(),
-		Status:             metav1.ConditionFalse,
-		Reason:             reason,
-		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            message,
-	})
+	SetReady(consoleApplication, metav1.ConditionFalse, reason, message)
+	SetProgressing(consoleApplication, metav1.ConditionFalse, appsv1alpha1.ReasonRequirementsNotMet.String(), "Requirements are not met")
 }
 
 // SetSucceeded sets the Operator Progressing and Application Ready conditions to True.
 func SetSucceeded(consoleApplication *appsv1alpha1.ConsoleApplication) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:               appsv1alpha1.ConditionReady.String(),
-		Status:             metav1.ConditionTrue,
-		Reason:             appsv1alpha1.ReasonAllResourcesReady.String(),
-		LastTransitionTime: metav1.NewTime(time.Now()),
-		Message:            "All resources are successfully created and ready",
-	})
-}
-
-// SetCondition sets a generic condition, overwriting existing one by type if present.
-func SetCondition(consoleApplication *appsv1alpha1.ConsoleApplication, typ string, status metav1.ConditionStatus, reason string, message string) {
-	meta.SetStatusCondition(&consoleApplication.Status.Conditions, metav1.Condition{
-		Type:    typ,
-		Status:  status,
-		Reason:  reason,
-		Message: message,
-	})
+	SetReady(consoleApplication, metav1.ConditionTrue, appsv1alpha1.ReasonAllResourcesReady.String(), "All resources are successfully created and ready")
+	SetProgressing(consoleApplication, metav1.ConditionFalse, appsv1alpha1.ReasonRequirementsMet.String(), "All requirements are met")
 }
