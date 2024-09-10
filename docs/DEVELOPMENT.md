@@ -2,15 +2,6 @@
 
 This document provides guidelines and instructions for setting up the development environment and contributing to the project.
 
-## Prerequisites
-
-Ensure you have the following tools installed:
-
-- Golang compiler supported by the Go team (1.22+)
-- Operator SDK version (1.35.x+)
-- Access to OpenShift cluster
-- Quay.io account to store container images
-
 ## Set Environment Variables
 
 Create `.env` file in the root directory of the project and add the following environment variables:
